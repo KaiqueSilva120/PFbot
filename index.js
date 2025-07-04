@@ -122,6 +122,15 @@ client.on('interactionCreate', async (interaction) => {
       if (await tratarInteracoesBlacklist(interaction, client)) return;
       if (await tratarInteracoesAusencia(interaction, client)) return;
       if (await tratarInteracoesMandados(interaction, client)) return;
+
+      // Tratar selects não reconhecidos pelos outros sistemas como registro
+      await tratarInteracaoRegistro(interaction, client, {
+        CANAL_REGISTROS_ID: process.env.CANAL_REGISTROS_ID,
+        CARGO_EQUIPE_GESTORA: process.env.CARGO_EQUIPE_GESTORA,
+        CARGO_REGISTRADO: process.env.CARGO_REGISTRADO,
+        CARGO_ALTO_COMANDO: process.env.CARGO_ALTO_COMANDO,
+      });
+      return;
     }
 
     if (interaction.isButton()) {
