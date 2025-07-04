@@ -12,7 +12,7 @@ const fs = require('fs/promises');
 const path = require('path');
 
 const CANAL_BLACKLIST_ID = '1388934240749490196'; // seu canal fixo da blacklist
-const CARGO_EQUIPE_GESTORA = process.env.CARGO_EQUIPE_GESTORA;
+// Removi a constante CARGO_EQUIPE_GESTORA pois não será usada
 
 const blacklistFilePath = path.join(__dirname, '..', 'blacklist.json');
 
@@ -166,14 +166,8 @@ function modalRemover() {
 }
 
 async function tratarInteracoesBlacklist(interaction, client) {
-  // Permissão de equipe gestora
-  const membro = interaction.member;
-  if (!membro.roles.cache.has(CARGO_EQUIPE_GESTORA)) {
-    await interaction.reply({ content: '❌ Você não tem permissão para usar essa função.', ephemeral: true });
-    return true;
-  }
+  // REMOVIDA a verificação de permissão
 
-  // Botões
   if (interaction.isButton()) {
     if (interaction.customId === 'blacklist_adicionar') {
       const modal = modalAdicionar();
@@ -198,7 +192,6 @@ async function tratarInteracoesBlacklist(interaction, client) {
     }
   }
 
-  // Modal submit para adicionar
   if (interaction.isModalSubmit()) {
     if (interaction.customId === 'blacklist_modal_adicionar') {
       const nome = interaction.fields.getTextInputValue('blacklist_nome').trim();
@@ -221,7 +214,6 @@ async function tratarInteracoesBlacklist(interaction, client) {
     }
   }
 
-  // Select menu para remover
   if (interaction.isStringSelectMenu()) {
     if (interaction.customId === 'blacklist_select_remover') {
       const selecionado = interaction.values[0];
