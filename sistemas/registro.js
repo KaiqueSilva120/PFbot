@@ -184,19 +184,19 @@ module.exports = {
 
           const targetId = interaction.customId.split('_')[2];
           const dados = registrosTemporarios[targetId];
-          if (!dados) return interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
+          if (!dados) return await interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
 
           const membro = await interaction.guild.members.fetch(targetId).catch(() => null);
-          if (!membro) return interaction.editReply({ content: '❌ Membro não encontrado.', components: [] });
+          if (!membro) return await interaction.editReply({ content: '❌ Membro não encontrado.', components: [] });
 
           const cargoId = interaction.values[0];
           const patenteDefinida = Object.entries(cargosPatentes).find(([, id]) => id === cargoId)?.[0] || 'Desconhecida';
 
-          // Código real ativado (removido return de teste)
-
+          // Remover cargos antigos
           const rolesToRemove = Object.values(cargosPatentes).filter(id => membro.roles.cache.has(id));
           const rolePromises = rolesToRemove.map(id => membro.roles.remove(id).catch(err => console.error(`Erro ao remover cargo ${id}:`, err)));
 
+          // Adicionar o novo cargo
           rolePromises.push(membro.roles.add(cargoId).catch(err => console.error(`Erro ao adicionar cargo ${cargoId}:`, err)));
 
           if (CARGO_REGISTRADO) rolePromises.push(membro.roles.add(CARGO_REGISTRADO).catch(err => console.error(`Erro ao adicionar cargo REGISTRADO:`, err)));
@@ -207,9 +207,11 @@ module.exports = {
 
           await Promise.all(rolePromises);
 
+          // Alterar nickname
           const novoNick = `${patenteDefinida}.${dados.nome} | ${dados.id}`;
           await membro.setNickname(novoNick).catch(err => console.error(`Erro ao definir nickname para ${membro.id}:`, err));
 
+          // Editar mensagem no canal de registro
           const canal = await client.channels.fetch(CANAL_REGISTROS_ID);
           const msg = await canal.messages.fetch(mensagensRegistro[targetId]);
 
@@ -242,6 +244,8 @@ module.exports = {
           console.error('Erro no select menu:', error);
           if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '❌ Erro ao processar a seleção.', flags: 64 });
+          } else {
+            await interaction.editReply({ content: '❌ Erro ao processar a seleção.' });
           }
         }
       }
