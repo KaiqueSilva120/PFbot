@@ -79,6 +79,7 @@ module.exports = {
     try {
       registrarLog('INTERACAO_DETECTADA', interaction, `Tipo: ${interaction.type}, ID: ${interaction.customId}`);
 
+      // Botão para abrir o formulário
       if (interaction.isButton() && interaction.customId === 'abrir_formulario') {
         registrarLog('BOTAO_ABRIR_FORMULARIO', interaction);
         const modal = new ModalBuilder()
@@ -104,9 +105,10 @@ module.exports = {
         await interaction.showModal(modal);
       }
 
+      // Modal de registro enviado
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'registro_modal') {
         registrarLog('MODAL_SUBMIT_REGISTRO', interaction);
-        await interaction.deferReply({ flags: 64 });
+        await interaction.deferReply({ ephemeral: true });
 
         const dados = {
           nome: interaction.fields.getTextInputValue('nome'),
@@ -116,7 +118,10 @@ module.exports = {
           ts3: interaction.fields.getTextInputValue('ts3')
         };
 
-        registrosTemporarios[interaction.user.id] = dados;
+        console.log('[DADOS REGISTRO]', dados);
+
+        const userId = interaction.user.id;
+        registrosTemporarios[userId] = dados;
 
         const canal = await client.channels.fetch(CANAL_REGISTROS_ID);
         const embed = new EmbedBuilder()
@@ -131,69 +136,65 @@ module.exports = {
           );
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`aceitar_${interaction.user.id}`).setLabel('✅ Aceitar Registro').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId(`recusar_${interaction.user.id}`).setLabel('❌ Negar Registro').setStyle(ButtonStyle.Danger)
+          new ButtonBuilder().setCustomId(`aceitar_${userId}`).setLabel('✅ Aceitar Registro').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`recusar_${userId}`).setLabel('❌ Negar Registro').setStyle(ButtonStyle.Danger)
         );
 
         const msg = await canal.send({
-          content: `<a:lupa:1389604951746941159> | Registro recebido de: <@${interaction.user.id}>\n<:police:1389074817537278023> | <@&${CARGO_EQUIPE_GESTORA}>`,
+          content: `<a:lupa:1389604951746941159> | Registro recebido de: <@${userId}>\n<:police:1389074817537278023> | <@&${CARGO_EQUIPE_GESTORA}>`,
           embeds: [embed],
           components: [row]
         });
 
-        mensagensRegistro[interaction.user.id] = msg.id;
-
-        await interaction.editReply({ content: 'Registro enviado para análise com sucesso!', flags: 64 });
+        mensagensRegistro[userId] = msg.id;
+        await interaction.editReply({ content: 'Registro enviado para análise com sucesso!' });
       }
 
+      // Botão aceitar
       else if (interaction.isButton() && interaction.customId.startsWith('aceitar_')) {
         registrarLog('BOTAO_ACEITAR_CLICADO', interaction);
 
         const targetId = interaction.customId.split('_')[1];
         const dados = registrosTemporarios[targetId];
         if (!dados) {
-          return interaction.reply({ content: 'Registro não encontrado.', flags: 64 });
+          return interaction.reply({ content: 'Registro não encontrado.', ephemeral: true });
         }
 
-        // Pergunta se deseja alterar o nome (menu suspenso)
+        // Pergunta se deseja alterar nome
         const selectMenu = new StringSelectMenuBuilder()
           .setCustomId(`alterar_nome_${targetId}`)
-          .setPlaceholder(`Deseja alterar o nome? (Atual: ${dados.nome})`)
+          .setPlaceholder(`Deseja alterar o nome do usuário? Nome atual: ${dados.nome}`)
           .addOptions([
             {
-              label: 'Manter nome original',
+              label: 'Manter nome',
               description: 'Usar o nome informado no registro',
               value: 'manter',
+              emoji: '✅'
             },
             {
               label: 'Alterar nome',
-              description: 'Informar um nome novo',
+              description: 'Digite um nome diferente',
               value: 'alterar',
-            },
+              emoji: '✏️'
+            }
           ]);
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
 
-        await interaction.reply({
-          content: 'Deseja alterar o nome do usuário?',
-          components: [row],
-          flags: 64,
-        });
+        await interaction.reply({ content: 'Deseja alterar o nome do usuário?', components: [row], ephemeral: true });
       }
 
+      // Select menu para alterar nome
       else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('alterar_nome_')) {
         registrarLog('SELECAO_ALTERAR_NOME', interaction);
 
-        await interaction.deferReply({ flags: 64 });
-
         const targetId = interaction.customId.split('_')[2];
         const dados = registrosTemporarios[targetId];
-        if (!dados) return await interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
+        if (!dados) return await interaction.reply({ content: '❌ Registro não encontrado.', ephemeral: true });
 
         const escolha = interaction.values[0];
 
         if (escolha === 'alterar') {
-          // Abrir modal para o nome novo
           const modal = new ModalBuilder()
             .setCustomId(`modal_nome_custom_${targetId}`)
             .setTitle('Nome Customizado')
@@ -207,11 +208,11 @@ module.exports = {
               )
             );
 
-          await interaction.editReply({ content: 'Abrindo modal para nome customizado...', components: [] });
+          // SEM deferReply ou editReply aqui
           await interaction.showModal(modal);
 
         } else {
-          // Manter nome original: ir direto para menu seleção de cargo
+          // manter nome original — abre menu de cargos
           const options = Object.entries(cargosPatentes).map(([nome, id]) => ({
             label: nome,
             value: id,
@@ -224,28 +225,26 @@ module.exports = {
 
           const row = new ActionRowBuilder().addComponents(selectMenu);
 
-          await interaction.editReply({
+          await interaction.reply({
             content: 'Selecione a patente para confirmar o registro:',
             components: [row],
+            ephemeral: true
           });
         }
       }
 
+      // Modal para nome customizado enviado
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('modal_nome_custom_')) {
-        registrarLog('MODAL_NOME_CUSTOM_SUBMIT', interaction);
-
-        await interaction.deferReply({ flags: 64 });
+        registrarLog('MODAL_SUBMIT_NOME_CUSTOM', interaction);
 
         const targetId = interaction.customId.split('_')[3];
         const dados = registrosTemporarios[targetId];
-        if (!dados) return await interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
+        if (!dados) return interaction.reply({ content: '❌ Registro não encontrado.', ephemeral: true });
 
-        const novoNome = interaction.fields.getTextInputValue('nome_custom');
+        const nomeCustom = interaction.fields.getTextInputValue('nome_custom');
+        dados.nome = nomeCustom; // altera o nome no registro temporário
 
-        // Armazenar o nome customizado no dados temporários
-        dados.nomeCustomizada = novoNome;
-
-        // Após receber o nome customizado, abrir menu de seleção do cargo
+        // Abre o menu de seleção de cargo após alterar o nome
         const options = Object.entries(cargosPatentes).map(([nome, id]) => ({
           label: nome,
           value: id,
@@ -258,17 +257,19 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(selectMenu);
 
-        await interaction.editReply({
-          content: `Nome alterado para: **${novoNome}**\nAgora selecione a patente para confirmar o registro:`,
+        await interaction.reply({
+          content: `Nome alterado para **${nomeCustom}**. Agora selecione a patente para confirmar o registro:`,
           components: [row],
+          ephemeral: true
         });
       }
 
+      // Select menu de seleção de cargo
       else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('selecionar_cargo_')) {
         try {
           registrarLog('SELECAO_CARGO_FEITA', interaction);
 
-          await interaction.deferReply({ flags: 64 });
+          await interaction.deferReply({ ephemeral: true });
 
           const targetId = interaction.customId.split('_')[2];
           const dados = registrosTemporarios[targetId];
@@ -295,9 +296,8 @@ module.exports = {
 
           await Promise.all(rolePromises);
 
-          // Definir nickname, usando nome customizado se houver
-          const nomeParaNick = dados.nomeCustomizada || dados.nome;
-          const novoNick = `${patenteDefinida}.${nomeParaNick} | ${dados.id}`;
+          // Alterar nickname
+          const novoNick = `${patenteDefinida}.${dados.nome} | ${dados.id}`;
           await membro.setNickname(novoNick).catch(err => console.error(`Erro ao definir nickname para ${membro.id}:`, err));
 
           // Editar mensagem no canal de registro
@@ -308,7 +308,7 @@ module.exports = {
             .setTitle('<:positive:1390174067218190347> | Registro Aprovado')
             .setColor('Green')
             .addFields(
-              { name: '<:c_:1389391603415650326> | Nome', value: nomeParaNick },
+              { name: '<:c_:1389391603415650326> | Nome', value: dados.nome },
               { name: '<:cmdgeral:1389391645748760689> | ID', value: dados.id },
               { name: '<:staff:1389391852909625377> | Patente (informada)', value: dados.patenteInformada },
               { name: '<:staff:1389391852909625377> | Patente (setada)', value: patenteDefinida },
@@ -332,13 +332,14 @@ module.exports = {
         } catch (error) {
           console.error('Erro no select menu:', error);
           if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Erro ao processar a seleção.', flags: 64 });
+            await interaction.reply({ content: '❌ Erro ao processar a seleção.', ephemeral: true });
           } else {
             await interaction.editReply({ content: '❌ Erro ao processar a seleção.' });
           }
         }
       }
 
+      // Botão recusar
       else if (interaction.isButton() && interaction.customId.startsWith('recusar_')) {
         registrarLog('BOTAO_RECUSAR_CLICADO', interaction);
         const targetId = interaction.customId.split('_')[1];
@@ -353,9 +354,10 @@ module.exports = {
         await interaction.showModal(modal);
       }
 
+      // Modal motivo recusa enviado
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('motivo_recusa_')) {
         registrarLog('MODAL_SUBMIT_REJEICAO', interaction);
-        await interaction.deferReply({ flags: 64 });
+        await interaction.deferReply({ ephemeral: true });
 
         const targetId = interaction.customId.split('_')[2];
         const motivo = interaction.fields.getTextInputValue('motivo');
@@ -383,20 +385,21 @@ module.exports = {
           .setFooter({ text: 'registro negado' });
 
         await msg.edit({
-          content: `<:negative:1390174962005839942> | Registro negado de: <@${targetId}>`,
+          content: `<:negative:1390174962005839942> | Registro recusado de: <@${targetId}>`,
           embeds: [embed],
           components: []
         });
 
-        await interaction.editReply({ content: 'Registro recusado e mensagem atualizada.', components: [] });
+        await interaction.editReply({ content: 'Registro recusado com sucesso.', components: [] });
 
         delete registrosTemporarios[targetId];
         delete mensagensRegistro[targetId];
       }
+
     } catch (err) {
       console.error('[ERRO tratarInteracao]:', err);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Erro interno ao processar interação.', flags: 64 });
+        await interaction.reply({ content: '❌ Ocorreu um erro.', ephemeral: true });
       }
     }
   }
