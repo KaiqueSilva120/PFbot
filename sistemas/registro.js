@@ -106,7 +106,6 @@ module.exports = {
 
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'registro_modal') {
         registrarLog('MODAL_SUBMIT_REGISTRO', interaction);
-        console.log('Deferindo reply do modal registro...');
         await interaction.deferReply({ flags: 64 });
 
         const dados = {
@@ -146,8 +145,7 @@ module.exports = {
         });
 
         mensagensRegistro[userId] = msg.id;
-        await interaction.editReply({ content: 'Registro enviado para análise com sucesso!', ephemeral: true });
-        console.log('Reply editada após modal registro.');
+        await interaction.editReply({ content: 'Registro enviado para análise com sucesso!', flags: 64 });
       }
 
       else if (interaction.isButton() && interaction.customId.startsWith('aceitar_')) {
@@ -156,7 +154,7 @@ module.exports = {
         const targetId = interaction.customId.split('_')[1];
         const dados = registrosTemporarios[targetId];
         if (!dados) {
-          return interaction.reply({ content: 'Registro não encontrado.', ephemeral: true });
+          return interaction.reply({ content: 'Registro não encontrado.', flags: 64 });
         }
 
         const options = Object.entries(cargosPatentes).map(([nome, id]) => ({
@@ -174,70 +172,82 @@ module.exports = {
         await interaction.reply({
           content: 'Selecione a patente para confirmar o registro:',
           components: [row],
-          ephemeral: true,
+          flags: 64,
         });
       }
 
       else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('selecionar_cargo_')) {
-        registrarLog('SELECAO_CARGO_FEITA', interaction);
-        console.log('Deferindo reply do select menu...');
-        await interaction.deferReply({ flags: 64 });
+        try {
+          registrarLog('SELECAO_CARGO_FEITA', interaction);
 
-        const targetId = interaction.customId.split('_')[2];
-        const dados = registrosTemporarios[targetId];
-        if (!dados) return interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
+          await interaction.deferReply({ flags: 64 });
 
-        const membro = await interaction.guild.members.fetch(targetId).catch(() => null);
-        if (!membro) return interaction.editReply({ content: '❌ Membro não encontrado.', components: [] });
+          const targetId = interaction.customId.split('_')[2];
+          const dados = registrosTemporarios[targetId];
+          if (!dados) return interaction.editReply({ content: '❌ Registro não encontrado.', components: [] });
 
-        const cargoId = interaction.values[0];
-        const patenteDefinida = Object.entries(cargosPatentes).find(([, id]) => id === cargoId)?.[0] || 'Desconhecida';
+          const membro = await interaction.guild.members.fetch(targetId).catch(() => null);
+          if (!membro) return interaction.editReply({ content: '❌ Membro não encontrado.', components: [] });
 
-        const rolesToRemove = Object.values(cargosPatentes).filter(id => membro.roles.cache.has(id));
-        const rolePromises = rolesToRemove.map(id => membro.roles.remove(id).catch(err => console.error(`Erro ao remover cargo ${id}:`, err)));
+          const cargoId = interaction.values[0];
+          const patenteDefinida = Object.entries(cargosPatentes).find(([, id]) => id === cargoId)?.[0] || 'Desconhecida';
 
-        rolePromises.push(membro.roles.add(cargoId).catch(err => console.error(`Erro ao adicionar cargo ${cargoId}:`, err)));
+          // Aqui para testes, respondo simples e depois você reintegra seu código de cargos e nickname
+          return interaction.editReply({ content: `✅ Cargo selecionado: **${patenteDefinida}** (${cargoId})`, components: [] });
 
-        if (CARGO_REGISTRADO) rolePromises.push(membro.roles.add(CARGO_REGISTRADO).catch(err => console.error(`Erro ao adicionar cargo REGISTRADO:`, err)));
+          /*
+          // Seu código original para manipular cargos e apelidos:
+          const rolesToRemove = Object.values(cargosPatentes).filter(id => membro.roles.cache.has(id));
+          const rolePromises = rolesToRemove.map(id => membro.roles.remove(id).catch(err => console.error(`Erro ao remover cargo ${id}:`, err)));
 
-        if (CARGO_ALTO_COMANDO && Object.values(cargosPatentes).slice(0, 7).includes(cargoId)) {
-          rolePromises.push(membro.roles.add(CARGO_ALTO_COMANDO).catch(err => console.error(`Erro ao adicionar cargo ALTO_COMANDO:`, err)));
+          rolePromises.push(membro.roles.add(cargoId).catch(err => console.error(`Erro ao adicionar cargo ${cargoId}:`, err)));
+
+          if (CARGO_REGISTRADO) rolePromises.push(membro.roles.add(CARGO_REGISTRADO).catch(err => console.error(`Erro ao adicionar cargo REGISTRADO:`, err)));
+
+          if (CARGO_ALTO_COMANDO && Object.values(cargosPatentes).slice(0, 7).includes(cargoId)) {
+            rolePromises.push(membro.roles.add(CARGO_ALTO_COMANDO).catch(err => console.error(`Erro ao adicionar cargo ALTO_COMANDO:`, err)));
+          }
+
+          await Promise.all(rolePromises);
+
+          const novoNick = `${patenteDefinida}.${dados.nome} | ${dados.id}`;
+          await membro.setNickname(novoNick).catch(err => console.error(`Erro ao definir nickname para ${membro.id}:`, err));
+
+          const canal = await client.channels.fetch(CANAL_REGISTROS_ID);
+          const msg = await canal.messages.fetch(mensagensRegistro[targetId]);
+
+          const embed = new EmbedBuilder()
+            .setTitle('<:positive:1390174067218190347> | Registro Aprovado')
+            .setColor('Green')
+            .addFields(
+              { name: '<:c_:1389391603415650326> | Nome', value: dados.nome },
+              { name: '<:cmdgeral:1389391645748760689> | ID', value: dados.id },
+              { name: '<:staff:1389391852909625377> | Patente (informada)', value: dados.patenteInformada },
+              { name: '<:staff:1389391852909625377> | Patente (setada)', value: patenteDefinida },
+              { name: '<a:fixclandst:1389998676805550182> | Recrutador', value: dados.recrutador },
+              { name: '🔗 TS3', value: dados.ts3 },
+              { name: '<:data:1389411249519071263> Data e Hora', value: formatarDataHora() },
+              { name: 'Quem aceitou o registro', value: `${interaction.user}\n<@&${CARGO_EQUIPE_GESTORA}>` }
+            )
+            .setFooter({ text: 'registro aprovado' });
+
+          await msg.edit({
+            content: `<:positive:1390174067218190347> | Registro aprovado de: <@${targetId}>`,
+            embeds: [embed],
+            components: []
+          });
+
+          await interaction.editReply({ content: '✅ Registro aprovado com sucesso!', components: [] });
+
+          delete registrosTemporarios[targetId];
+          delete mensagensRegistro[targetId];
+          */
+        } catch (error) {
+          console.error('Erro no select menu:', error);
+          if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ Erro ao processar a seleção.', flags: 64 });
+          }
         }
-
-        await Promise.all(rolePromises);
-
-        const novoNick = `${patenteDefinida}.${dados.nome} | ${dados.id}`;
-        await membro.setNickname(novoNick).catch(err => console.error(`Erro ao definir nickname para ${membro.id}:`, err));
-
-        const canal = await client.channels.fetch(CANAL_REGISTROS_ID);
-        const msg = await canal.messages.fetch(mensagensRegistro[targetId]);
-
-        const embed = new EmbedBuilder()
-          .setTitle('<:positive:1390174067218190347> | Registro Aprovado')
-          .setColor('Green')
-          .addFields(
-            { name: '<:c_:1389391603415650326> | Nome', value: dados.nome },
-            { name: '<:cmdgeral:1389391645748760689> | ID', value: dados.id },
-            { name: '<:staff:1389391852909625377> | Patente (informada)', value: dados.patenteInformada },
-            { name: '<:staff:1389391852909625377> | Patente (setada)', value: patenteDefinida },
-            { name: '<a:fixclandst:1389998676805550182> | Recrutador', value: dados.recrutador },
-            { name: '🔗 TS3', value: dados.ts3 },
-            { name: '<:data:1389411249519071263> Data e Hora', value: formatarDataHora() },
-            { name: 'Quem aceitou o registro', value: `${interaction.user}\n<@&${CARGO_EQUIPE_GESTORA}>` }
-          )
-          .setFooter({ text: 'registro aprovado' });
-
-        await msg.edit({
-          content: `<:positive:1390174067218190347> | Registro aprovado de: <@${targetId}>`,
-          embeds: [embed],
-          components: []
-        });
-
-        await interaction.editReply({ content: '✅ Registro aprovado com sucesso!', components: [] });
-        console.log('Reply editada após aprovação.');
-
-        delete registrosTemporarios[targetId];
-        delete mensagensRegistro[targetId];
       }
 
       else if (interaction.isButton() && interaction.customId.startsWith('recusar_')) {
@@ -256,7 +266,6 @@ module.exports = {
 
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('motivo_recusa_')) {
         registrarLog('MODAL_SUBMIT_REJEICAO', interaction);
-        console.log('Deferindo reply do modal recusa...');
         await interaction.deferReply({ flags: 64 });
 
         const targetId = interaction.customId.split('_')[2];
@@ -300,7 +309,6 @@ module.exports = {
         }
 
         await interaction.editReply({ content: '✅ Registro recusado com sucesso! O usuário foi notificado (se possível).' });
-        console.log('Reply editada após recusa.');
 
         delete registrosTemporarios[targetId];
         delete mensagensRegistro[targetId];
@@ -310,7 +318,7 @@ module.exports = {
       console.error('[ERRO INTERAÇÃO REGISTRO]', e);
       if (!interaction.replied && !interaction.deferred) {
         try {
-          await interaction.reply({ content: '❌ Ocorreu um erro ao processar o registro.', ephemeral: true });
+          await interaction.reply({ content: '❌ Ocorreu um erro ao processar o registro.', flags: 64 });
         } catch { }
       }
     }
