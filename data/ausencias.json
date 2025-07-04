@@ -1,0 +1,56 @@
+[
+  {
+    "mensagemId": "1390400306550013964",
+    "userId": "707959058228969485",
+    "status": "Aceita",
+    "analista": "707959058228969485",
+    "dataAnalise": "2025-07-03T18:44:53.585Z"
+  },
+  {
+    "mensagemId": "1390403050891509901",
+    "userId": "707959058228969485",
+    "id": "oi",
+    "motivo": "oi",
+    "inicio": "01/07/2025",
+    "fim": "15/07/2025",
+    "status": "Pendente",
+    "idModalRecusa": "1390403065407996096"
+  },
+  {
+    "mensagemId": "1390405464197562448",
+    "userId": "707959058228969485",
+    "status": "Aceita",
+    "analista": "707959058228969485",
+    "dataResposta": "03/07/2025, 15:55:01"
+  },
+  {
+    "mensagemId": "1390405800392130692",
+    "userId": "707959058228969485",
+    "status": "Recusada",
+    "idModalRecusaMensagemId": "1390405800392130692",
+    "analista": "707959058228969485",
+    "dataResposta": "03/07/2025, 15:56:22",
+    "motivoRecusa": "Off"
+  },
+  {
+    "mensagemId": "1390406253263716453",
+    "userId": "707959058228969485",
+    "status": "Aceita",
+    "analista": "707959058228969485",
+    "dataResposta": "03/07/2025, 15:58:07"
+  },
+  {
+    "mensagemId": "1390407869035184310",
+    "userId": "707959058228969485",
+    "status": "Aceita",
+    "analista": "707959058228969485",
+    "dataResposta": "03/07/2025, 16:04:34"
+  },
+  {
+    "mensagemId": "1390765734182781181",
+    "userId": "707959058228969485",
+    "status": "Aceita",
+    "analista": "707959058228969485",
+    "dataResposta": "04/07/2025, 15:46:32"
+  }
+]
