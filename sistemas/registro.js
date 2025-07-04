@@ -106,7 +106,7 @@ module.exports = {
 
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'registro_modal') {
         registrarLog('MODAL_SUBMIT_REGISTRO', interaction);
-        await interaction.deferReply({ ephemeral: true }); 
+        await interaction.deferReply({ flags: 64 });
 
         const dados = {
           nome: interaction.fields.getTextInputValue('nome'),
