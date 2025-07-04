@@ -106,6 +106,7 @@ module.exports = {
 
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId === 'registro_modal') {
         registrarLog('MODAL_SUBMIT_REGISTRO', interaction);
+        console.log('Deferindo reply do modal registro...');
         await interaction.deferReply({ flags: 64 });
 
         const dados = {
@@ -146,6 +147,7 @@ module.exports = {
 
         mensagensRegistro[userId] = msg.id;
         await interaction.editReply({ content: 'Registro enviado para análise com sucesso!', ephemeral: true });
+        console.log('Reply editada após modal registro.');
       }
 
       else if (interaction.isButton() && interaction.customId.startsWith('aceitar_')) {
@@ -176,11 +178,10 @@ module.exports = {
         });
       }
 
-      // Aqui está o bloco corrigido para o select menu, dentro da função e no lugar correto
       else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('selecionar_cargo_')) {
         registrarLog('SELECAO_CARGO_FEITA', interaction);
-
-        await interaction.deferReply({ ephemeral: true });
+        console.log('Deferindo reply do select menu...');
+        await interaction.deferReply({ flags: 64 });
 
         const targetId = interaction.customId.split('_')[2];
         const dados = registrosTemporarios[targetId];
@@ -233,6 +234,7 @@ module.exports = {
         });
 
         await interaction.editReply({ content: '✅ Registro aprovado com sucesso!', components: [] });
+        console.log('Reply editada após aprovação.');
 
         delete registrosTemporarios[targetId];
         delete mensagensRegistro[targetId];
@@ -254,7 +256,8 @@ module.exports = {
 
       else if (interaction.type === InteractionType.ModalSubmit && interaction.customId.startsWith('motivo_recusa_')) {
         registrarLog('MODAL_SUBMIT_REJEICAO', interaction);
-        await interaction.deferReply({ ephemeral: true });
+        console.log('Deferindo reply do modal recusa...');
+        await interaction.deferReply({ flags: 64 });
 
         const targetId = interaction.customId.split('_')[2];
         const motivo = interaction.fields.getTextInputValue('motivo');
@@ -297,6 +300,7 @@ module.exports = {
         }
 
         await interaction.editReply({ content: '✅ Registro recusado com sucesso! O usuário foi notificado (se possível).' });
+        console.log('Reply editada após recusa.');
 
         delete registrosTemporarios[targetId];
         delete mensagensRegistro[targetId];
@@ -311,6 +315,4 @@ module.exports = {
       }
     }
   }
-}; 
-// aaa
-
+};
