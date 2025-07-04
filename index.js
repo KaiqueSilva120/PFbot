@@ -1,6 +1,6 @@
 require('dotenv').config();
 const http = require('http');
-const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const { Client, GatewayIntentBits, Partials, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { conectarCall } = require('./sistemas/call'); // Importa função para conectar call
 
 // Importa sistemas da pasta sistemas/
@@ -45,7 +45,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildVoiceStates, // Importante para voz!
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [Partials.Channel],
 });
@@ -75,7 +75,6 @@ client.once('ready', async () => {
   await enviarMensagemFixaEmitir(client);
   await registrarComandos(client, process.env.TOKEN, process.env.CLIENT_ID, process.env.GUILD_ID);
 
-  // Conecta na call ao iniciar
   await conectarCall(client);
 });
 
@@ -146,6 +145,53 @@ client.on('interactionCreate', async (interaction) => {
       }
       if (await tratarInteracoesAusencia(interaction, client)) return;
       if (await tratarInteracoesMandados(interaction, client)) return;
+
+      // **Aqui: Sem restrição, qualquer um pode abrir o modal**
+      if (interaction.customId === 'abrir_formulario') {
+        // Abre o modal diretamente sem restrições
+        const modal = new ModalBuilder()
+          .setCustomId('registro_modal')
+          .setTitle('Registro Policial')
+          .addComponents(
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('nome')
+                .setLabel('Nome Completo')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('id')
+                .setLabel('ID')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('patente')
+                .setLabel('Patente')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('recrutador')
+                .setLabel('Recrutador')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+              new TextInputBuilder()
+                .setCustomId('ts3')
+                .setLabel('URL TS3')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+            ),
+          );
+        await interaction.showModal(modal);
+        return;
+      }
 
       await tratarInteracaoRegistro(interaction, client, {
         CANAL_REGISTROS_ID: process.env.CANAL_REGISTROS_ID,
