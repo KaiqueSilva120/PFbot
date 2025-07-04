@@ -192,11 +192,8 @@ module.exports = {
           const cargoId = interaction.values[0];
           const patenteDefinida = Object.entries(cargosPatentes).find(([, id]) => id === cargoId)?.[0] || 'Desconhecida';
 
-          // Aqui para testes, respondo simples e depois você reintegra seu código de cargos e nickname
-          return interaction.editReply({ content: `✅ Cargo selecionado: **${patenteDefinida}** (${cargoId})`, components: [] });
+          // Código real ativado (removido return de teste)
 
-          /*
-          // Seu código original para manipular cargos e apelidos:
           const rolesToRemove = Object.values(cargosPatentes).filter(id => membro.roles.cache.has(id));
           const rolePromises = rolesToRemove.map(id => membro.roles.remove(id).catch(err => console.error(`Erro ao remover cargo ${id}:`, err)));
 
@@ -241,7 +238,6 @@ module.exports = {
 
           delete registrosTemporarios[targetId];
           delete mensagensRegistro[targetId];
-          */
         } catch (error) {
           console.error('Erro no select menu:', error);
           if (!interaction.replied && !interaction.deferred) {
