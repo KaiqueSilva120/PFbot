@@ -136,8 +136,8 @@ module.exports = {
           );
 
         const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId(`aceitar_${userId}`).setLabel('✅ Aceitar Registro').setStyle(ButtonStyle.Success),
-          new ButtonBuilder().setCustomId(`recusar_${userId}`).setLabel('❌ Negar Registro').setStyle(ButtonStyle.Danger)
+          new ButtonBuilder().setCustomId(`aceitar_${userId}`).setLabel('✅ | Aceitar Registro').setStyle(ButtonStyle.Success),
+          new ButtonBuilder().setCustomId(`recusar_${userId}`).setLabel('❌ | Negar Registro').setStyle(ButtonStyle.Danger)
         );
 
         const msg = await canal.send({
@@ -308,8 +308,8 @@ module.exports = {
             .setTitle('<:positive:1390174067218190347> | Registro Aprovado')
             .setColor('Green')
             .addFields(
-              { name: ':positive~1: | Nome (Informado)', value: dados.patenteInformada ? `${dados.patenteInformada} ${dados.nome}` : dados.nome },
-              { name: ':positive~1: | Nome (setado)', value: `${patenteDefinida} ${dados.nome}` },
+              { name: '<:positive:1390174067218190347> | Nome (Informado)', value: dados.patenteInformada ? `${dados.patenteInformada} ${dados.nome}` : dados.nome },
+              { name: '<:positive:1390174067218190347> | Nome (setado)', value: `${patenteDefinida} ${dados.nome}` },
               { name: '<:cmdgeral:1389391645748760689> | ID', value: dados.id },
               { name: '<:staff:1389391852909625377> | Patente (informada)', value: dados.patenteInformada },
               { name: '<:staff:1389391852909625377> | Patente (setada)', value: patenteDefinida },
