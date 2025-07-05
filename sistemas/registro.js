@@ -28,6 +28,7 @@ const cargosPatentes = {
   "Agente Especial": "832607691616419851",
   "Agente": "832607692618596352",
   "Aluno": "1389079430890127454",
+  "Autorizado": "1305761415243501639"
 };
 
 function formatarDataHora(date = new Date()) {
