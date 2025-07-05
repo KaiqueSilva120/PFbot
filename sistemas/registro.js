@@ -32,9 +32,14 @@ const cargosPatentes = {
 };
 
 function formatarDataHora(date = new Date()) {
+  // Ajusta manualmente o fuso horário para UTC-3 (Brasília)
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+  const brasil = new Date(utc - 3 * 60 * 60000); // UTC-3
+
   const pad = n => n.toString().padStart(2, '0');
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${pad(brasil.getDate())}/${pad(brasil.getMonth() + 1)}/${brasil.getFullYear()} ${pad(brasil.getHours())}:${pad(brasil.getMinutes())}:${pad(brasil.getSeconds())}`;
 }
+
 
 function registrarLog(tipo, interaction, extra = '') {
   const usuario = interaction.user?.tag || 'Usuário Desconhecido';
