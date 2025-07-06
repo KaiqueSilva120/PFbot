@@ -1,6 +1,14 @@
 require('dotenv').config();
 const http = require('http');
-const { Client, GatewayIntentBits, Partials, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { 
+  Client, 
+  GatewayIntentBits, 
+  Partials, 
+  ModalBuilder, 
+  TextInputBuilder, 
+  TextInputStyle, 
+  ActionRowBuilder 
+} = require('discord.js');
 const { conectarCall } = require('./sistemas/call'); // Importa função para conectar call
 
 // Importa sistemas da pasta sistemas/
@@ -46,8 +54,9 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions,  // necessário para reagir e detectar reações
   ],
-  partials: [Partials.Channel],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
 // HTTP server para manter alive no Railway
@@ -58,6 +67,11 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`Servidor HTTP rodando na porta ${PORT}`);
 });
+
+// IDs para reação e cargo
+const ID_MENSAGEM_REACAO = '1391286930028757002';
+const ID_CARGO_REACAO = '1391251666321281207';
+const EMOJI_REACAO = 'rjp_pf'; // nome do emoji, sem <: >
 
 // Quando bot estiver pronto
 client.once('ready', async () => {
@@ -76,6 +90,38 @@ client.once('ready', async () => {
   await registrarComandos(client, process.env.TOKEN, process.env.CLIENT_ID, process.env.GUILD_ID);
 
   await conectarCall(client);
+
+  // Adiciona reação na mensagem para quem não tiver
+  try {
+    const guild = await client.guilds.fetch(process.env.GUILD_ID);
+    const channel = guild.channels.cache.find(c => c.isText() && c.messages); // procura canal com mensagens
+    if (!channel) {
+      console.warn('Canal para mensagem de reação não encontrado no cache.');
+      return;
+    }
+    // Busca a mensagem específica no canal correto (melhor se você sabe o canal)
+    // Caso saiba o canal, substitua o find por fetch direto:
+    // const channel = await guild.channels.fetch('ID_DO_CANAL_DA_MENSAGEM');
+    const mensagem = await channel.messages.fetch(ID_MENSAGEM_REACAO).catch(() => null);
+    if (!mensagem) {
+      console.warn('Mensagem para reação não encontrada.');
+      return;
+    }
+    // Confere se a reação já existe para não repetir
+    const jaReagiu = mensagem.reactions.cache.has(EMOJI_REACAO);
+    if (!jaReagiu) {
+      // Busca o emoji no servidor para usar no react (emoji personalizado)
+      const emoji = guild.emojis.cache.find(e => e.name === EMOJI_REACAO);
+      if (emoji) {
+        await mensagem.react(emoji).catch(console.error);
+        console.log(`Reação ${EMOJI_REACAO} adicionada na mensagem ${ID_MENSAGEM_REACAO}`);
+      } else {
+        console.warn(`Emoji ${EMOJI_REACAO} não encontrado no servidor.`);
+      }
+    }
+  } catch (err) {
+    console.error('Erro ao adicionar reação automática:', err);
+  }
 });
 
 // Evento de interação
@@ -230,6 +276,51 @@ client.on('error', (error) => {
 
 client.on('shardError', (error) => {
   console.error('[SHARD ERROR]', error);
+});
+
+// REAÇÕES PARA CARGO AUTOMÁTICO
+
+// Quando alguém adicionar uma reação
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (reaction.message.id !== ID_MENSAGEM_REACAO || user.bot) return;
+
+  // Para partials
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch {
+      return;
+    }
+  }
+
+  if (reaction.emoji.name === EMOJI_REACAO) {
+    const guild = reaction.message.guild;
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    if (member) {
+      await member.roles.add(ID_CARGO_REACAO).catch(console.error);
+    }
+  }
+});
+
+// Quando alguém remover a reação
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (reaction.message.id !== ID_MENSAGEM_REACAO || user.bot) return;
+
+  if (reaction.partial) {
+    try {
+      await reaction.fetch();
+    } catch {
+      return;
+    }
+  }
+
+  if (reaction.emoji.name === EMOJI_REACAO) {
+    const guild = reaction.message.guild;
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    if (member) {
+      await member.roles.remove(ID_CARGO_REACAO).catch(console.error);
+    }
+  }
 });
 
 // Log token carregado
