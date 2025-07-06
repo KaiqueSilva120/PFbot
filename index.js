@@ -8,7 +8,7 @@ const {
   TextInputBuilder, 
   TextInputStyle, 
   ActionRowBuilder,
-  ChannelType,      // <-- IMPORTADO AQUI
+  ChannelType,
 } = require('discord.js');
 const { conectarCall } = require('./sistemas/call'); // Importa função para conectar call
 
@@ -71,6 +71,7 @@ http.createServer((req, res) => {
 
 // IDs para reação e cargo
 const ID_MENSAGEM_REACAO = '1391286930028757002';
+const ID_CANAL_DA_MENSAGEM = '1391248897862664324'; // canal correto da mensagem
 const ID_CARGO_REACAO = '1391251666321281207';
 const EMOJI_REACAO = 'rjp_pf'; // nome do emoji, sem <: >
 
@@ -95,10 +96,9 @@ client.once('ready', async () => {
   // Adiciona reação na mensagem para quem não tiver
   try {
     const guild = await client.guilds.fetch(process.env.GUILD_ID);
-    // Usando ChannelType.GuildText para filtrar canais de texto
-    const channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText);
+    const channel = await guild.channels.fetch(ID_CANAL_DA_MENSAGEM);
     if (!channel) {
-      console.warn('Canal para mensagem de reação não encontrado no cache.');
+      console.warn('Canal para mensagem de reação não encontrado.');
       return;
     }
 
