@@ -7,7 +7,8 @@ const {
   ModalBuilder, 
   TextInputBuilder, 
   TextInputStyle, 
-  ActionRowBuilder 
+  ActionRowBuilder,
+  ChannelType,      // <-- IMPORTADO AQUI
 } = require('discord.js');
 const { conectarCall } = require('./sistemas/call'); // Importa função para conectar call
 
@@ -94,23 +95,21 @@ client.once('ready', async () => {
   // Adiciona reação na mensagem para quem não tiver
   try {
     const guild = await client.guilds.fetch(process.env.GUILD_ID);
-    const channel = guild.channels.cache.find(c => c.isText() && c.messages); // procura canal com mensagens
+    // Usando ChannelType.GuildText para filtrar canais de texto
+    const channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText);
     if (!channel) {
       console.warn('Canal para mensagem de reação não encontrado no cache.');
       return;
     }
-    // Busca a mensagem específica no canal correto (melhor se você sabe o canal)
-    // Caso saiba o canal, substitua o find por fetch direto:
-    // const channel = await guild.channels.fetch('ID_DO_CANAL_DA_MENSAGEM');
+
     const mensagem = await channel.messages.fetch(ID_MENSAGEM_REACAO).catch(() => null);
     if (!mensagem) {
       console.warn('Mensagem para reação não encontrada.');
       return;
     }
-    // Confere se a reação já existe para não repetir
+
     const jaReagiu = mensagem.reactions.cache.has(EMOJI_REACAO);
     if (!jaReagiu) {
-      // Busca o emoji no servidor para usar no react (emoji personalizado)
       const emoji = guild.emojis.cache.find(e => e.name === EMOJI_REACAO);
       if (emoji) {
         await mensagem.react(emoji).catch(console.error);
@@ -284,7 +283,6 @@ client.on('shardError', (error) => {
 client.on('messageReactionAdd', async (reaction, user) => {
   if (reaction.message.id !== ID_MENSAGEM_REACAO || user.bot) return;
 
-  // Para partials
   if (reaction.partial) {
     try {
       await reaction.fetch();
