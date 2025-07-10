@@ -11,7 +11,7 @@ const {
 } = require('discord.js');
 
 // IDs dos canais, categorias e cargos do Discord
-const canalFixoID = '1392235624114815108'; // Canal onde o botão de iniciar edital será enviado
+const canalFixoID = '1391576246575435949'; // Canal onde o botão de iniciar edital será enviado
 const categoriaID = '1392235600979169430'; // Categoria onde os canais de edital serão criados
 const canalAnaliseID = '1392235632859808037'; // Canal para onde os editais finalizados serão enviados para análise
 const cargoGestoraID = '1389346922300571739'; // Cargo que terá permissão para ver e gerenciar os editais
