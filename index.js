@@ -10,9 +10,8 @@ const {
   ActionRowBuilder,
   ChannelType,
 } = require('discord.js');
-const { conectarCall } = require('./sistemas/call'); // Importa função para conectar call
+const { conectarCall } = require('./sistemas/call');
 
-// Importa sistemas da pasta sistemas/
 const {
   initAtendimento,
   handleAtendimentoMenu,
@@ -47,7 +46,8 @@ const {
   tratarInteracoesMandados,
 } = require('./sistemas/mandados');
 
-// Cria cliente Discord
+const edital = require('./sistemas/edital');
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -55,12 +55,11 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildMessageReactions,  // necessário para reagir e detectar reações
+    GatewayIntentBits.GuildMessageReactions,
   ],
   partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
-// HTTP server para manter alive no Railway
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -69,13 +68,11 @@ http.createServer((req, res) => {
   console.log(`Servidor HTTP rodando na porta ${PORT}`);
 });
 
-// IDs para reação e cargo
 const ID_MENSAGEM_REACAO = '1391286930028757002';
-const ID_CANAL_DA_MENSAGEM = '1391248897862664324'; // canal correto da mensagem
+const ID_CANAL_DA_MENSAGEM = '1391248897862664324';
 const ID_CARGO_REACAO = '1391251666321281207';
-const EMOJI_REACAO = 'rjp_pf'; // nome do emoji, sem <: >
+const EMOJI_REACAO = 'rjp_pf';
 
-// Quando bot estiver pronto
 client.once('ready', async () => {
   console.log(`[BOT] Conectado como ${client.user.tag}`);
 
@@ -90,40 +87,27 @@ client.once('ready', async () => {
   await enviarMensagemAusencia(client);
   await enviarMensagemFixaEmitir(client);
   await registrarComandos(client, process.env.TOKEN, process.env.CLIENT_ID, process.env.GUILD_ID);
-
   await conectarCall(client);
+  await edital.init(client); // Mensagem fixa do sistema de edital
 
-  // Adiciona reação na mensagem para quem não tiver
   try {
     const guild = await client.guilds.fetch(process.env.GUILD_ID);
     const channel = await guild.channels.fetch(ID_CANAL_DA_MENSAGEM);
-    if (!channel) {
-      console.warn('Canal para mensagem de reação não encontrado.');
-      return;
-    }
+    if (!channel) return;
 
     const mensagem = await channel.messages.fetch(ID_MENSAGEM_REACAO).catch(() => null);
-    if (!mensagem) {
-      console.warn('Mensagem para reação não encontrada.');
-      return;
-    }
+    if (!mensagem) return;
 
     const jaReagiu = mensagem.reactions.cache.has(EMOJI_REACAO);
     if (!jaReagiu) {
       const emoji = guild.emojis.cache.find(e => e.name === EMOJI_REACAO);
-      if (emoji) {
-        await mensagem.react(emoji).catch(console.error);
-        console.log(`Reação ${EMOJI_REACAO} adicionada na mensagem ${ID_MENSAGEM_REACAO}`);
-      } else {
-        console.warn(`Emoji ${EMOJI_REACAO} não encontrado no servidor.`);
-      }
+      if (emoji) await mensagem.react(emoji).catch(console.error);
     }
   } catch (err) {
     console.error('Erro ao adicionar reação automática:', err);
   }
 });
 
-// Evento de interação
 client.on('interactionCreate', async (interaction) => {
   console.log('[INTERAÇÃO]', {
     tipo: interaction.type,
@@ -133,13 +117,7 @@ client.on('interactionCreate', async (interaction) => {
 
   try {
     if (interaction.isCommand()) {
-      // Comando slash
-      await executarComando(
-        interaction,
-        client,
-        process.env.CARGO_EQUIPE_GESTORA,
-        process.env.CANAL_MENSAGENS_MEMBROS
-      );
+      await executarComando(interaction, client, process.env.CARGO_EQUIPE_GESTORA, process.env.CANAL_MENSAGENS_MEMBROS);
       return;
     }
 
@@ -148,6 +126,7 @@ client.on('interactionCreate', async (interaction) => {
       if (await tratarInteracoesBlacklist(interaction, client)) return;
       if (await tratarInteracoesAusencia(interaction, client)) return;
       if (await tratarInteracoesMandados(interaction, client)) return;
+      if (await edital.tratarModal(interaction, client)) return;
 
       await tratarInteracaoRegistro(interaction, client, {
         CANAL_REGISTROS_ID: process.env.CANAL_REGISTROS_ID,
@@ -167,7 +146,6 @@ client.on('interactionCreate', async (interaction) => {
       if (await tratarInteracoesAusencia(interaction, client)) return;
       if (await tratarInteracoesMandados(interaction, client)) return;
 
-      // Tratar selects não reconhecidos pelos outros sistemas como registro
       await tratarInteracaoRegistro(interaction, client, {
         CANAL_REGISTROS_ID: process.env.CANAL_REGISTROS_ID,
         CARGO_EQUIPE_GESTORA: process.env.CARGO_EQUIPE_GESTORA,
@@ -178,60 +156,42 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isButton()) {
-      if (
-        ['fechar_ticket', 'notificar_equipe', 'notificar_membro', 'reabrir_ticket', 'excluir_topico'].includes(interaction.customId)
-      ) {
+      if (await edital.handleRealizarEdital(interaction, client)) return;
+      if (await edital.handleEnviarEdital(interaction, client)) return;
+      if (await edital.handleAceitarRecusarEdital(interaction, client)) return;
+
+      if (['fechar_ticket', 'notificar_equipe', 'notificar_membro', 'reabrir_ticket', 'excluir_topico'].includes(interaction.customId)) {
         await handleTicketButtons(interaction, client);
         return;
       }
+
       if (['blacklist_adicionar', 'blacklist_remover'].includes(interaction.customId)) {
         await tratarInteracoesBlacklist(interaction, client);
         return;
       }
+
       if (await tratarInteracoesAusencia(interaction, client)) return;
       if (await tratarInteracoesMandados(interaction, client)) return;
 
-      // **Aqui: Sem restrição, qualquer um pode abrir o modal**
       if (interaction.customId === 'abrir_formulario') {
-        // Abre o modal diretamente sem restrições
         const modal = new ModalBuilder()
           .setCustomId('registro_modal')
           .setTitle('Registro Policial')
           .addComponents(
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('nome')
-                .setLabel('Nome Completo')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
+              new TextInputBuilder().setCustomId('nome').setLabel('Nome Completo').setStyle(TextInputStyle.Short).setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('id')
-                .setLabel('ID')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
+              new TextInputBuilder().setCustomId('id').setLabel('ID').setStyle(TextInputStyle.Short).setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('patente')
-                .setLabel('Patente')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
+              new TextInputBuilder().setCustomId('patente').setLabel('Patente').setStyle(TextInputStyle.Short).setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('recrutador')
-                .setLabel('Recrutador')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
+              new TextInputBuilder().setCustomId('recrutador').setLabel('Recrutador').setStyle(TextInputStyle.Short).setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
-              new TextInputBuilder()
-                .setCustomId('ts3')
-                .setLabel('URL TS3')
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true)
+              new TextInputBuilder().setCustomId('ts3').setLabel('URL TS3').setStyle(TextInputStyle.Short).setRequired(true)
             ),
           );
         await interaction.showModal(modal);
@@ -248,7 +208,6 @@ client.on('interactionCreate', async (interaction) => {
     }
   } catch (err) {
     console.error('[ERRO DE INTERAÇÃO]', err);
-
     if (!interaction.replied && !interaction.deferred) {
       try {
         await interaction.reply({
@@ -262,13 +221,11 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// Mensagens comuns
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   await tratarMensagemCanal(message);
 });
 
-// Debug de erros do bot
 client.on('error', (error) => {
   console.error('[CLIENT ERROR]', error);
 });
@@ -277,51 +234,28 @@ client.on('shardError', (error) => {
   console.error('[SHARD ERROR]', error);
 });
 
-// REAÇÕES PARA CARGO AUTOMÁTICO
-
-// Quando alguém adicionar uma reação
 client.on('messageReactionAdd', async (reaction, user) => {
   if (reaction.message.id !== ID_MENSAGEM_REACAO || user.bot) return;
-
-  if (reaction.partial) {
-    try {
-      await reaction.fetch();
-    } catch {
-      return;
-    }
-  }
+  if (reaction.partial) try { await reaction.fetch(); } catch { return; }
 
   if (reaction.emoji.name === EMOJI_REACAO) {
     const guild = reaction.message.guild;
     const member = await guild.members.fetch(user.id).catch(() => null);
-    if (member) {
-      await member.roles.add(ID_CARGO_REACAO).catch(console.error);
-    }
+    if (member) await member.roles.add(ID_CARGO_REACAO).catch(console.error);
   }
 });
 
-// Quando alguém remover a reação
 client.on('messageReactionRemove', async (reaction, user) => {
   if (reaction.message.id !== ID_MENSAGEM_REACAO || user.bot) return;
-
-  if (reaction.partial) {
-    try {
-      await reaction.fetch();
-    } catch {
-      return;
-    }
-  }
+  if (reaction.partial) try { await reaction.fetch(); } catch { return; }
 
   if (reaction.emoji.name === EMOJI_REACAO) {
     const guild = reaction.message.guild;
     const member = await guild.members.fetch(user.id).catch(() => null);
-    if (member) {
-      await member.roles.remove(ID_CARGO_REACAO).catch(console.error);
-    }
+    if (member) await member.roles.remove(ID_CARGO_REACAO).catch(console.error);
   }
 });
 
-// Log token carregado
 console.log('Tentando conectar ao Discord com token:', process.env.TOKEN ? '[OK]' : '[FALHA]');
 
 client.login(process.env.TOKEN)
