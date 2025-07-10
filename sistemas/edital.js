@@ -131,13 +131,13 @@ module.exports = {
 
     // Cria o embed do edital
     const embed = new EmbedBuilder()
-      .setTitle('📢 Edital de Convocação — Polícia Federal')
+      .setTitle('<:avisos:1392886752737235127> Edital de Convocação — Polícia Federal')
       .setImage('https://cdn.discordapp.com/attachments/857263560831664201/1391581083916697692/Edital.png') // Imagem principal
       .setThumbnail(guildIcon) // Ícone do servidor como thumbnail
-      .setDescription(`🛡️ **Atenção, candidatos!**
+      .setDescription(`<a:seta:1389391513745887353> **Atenção, candidatos!**
 Está aberto o novo edital da Polícia Federal! Confira abaixo as informações importantes e participe da seleção.
 
-📅 **Período de Inscrição:**
+<:Sv_Icon_Rules:1390467599724318742> **Período de Inscrição:**
 08/07/2025 a 22/07/2025
 
 📝 **Etapas do Processo:**
@@ -145,16 +145,16 @@ Está aberto o novo edital da Polícia Federal! Confira abaixo as informações 
 • Entrevista
 • Curso de Formação
 
-📌 **Requisitos:**
+<a:fixclandst:1389998676805550182> **Requisitos:**
 • Maior de 18 anos
 • Conhecimento das regras da cidade
 • Estar regular no servidor
 • Disponibilidade mínima de 7h/semana
 
-📎 **Importante:**
+<a:c_warningrgbFXP:1390000774863519765> **Importante:**
 A ausência em qualquer etapa implicará em desclassificação automática.
 
-🎯 Para iniciar o edital, clique no botão abaixo.`)
+<:cmdgeral:1389391645748760689> Para iniciar o edital, clique no botão abaixo.`)
       .setColor('#ffc107');
 
     // Cria o botão para iniciar o edital
